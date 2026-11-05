@@ -13,3 +13,7 @@ venv/
 # Config/estado do usuário (fica em %APPDATA%, mas por via das dúvidas)
 *.local.json
 captures/
+
+# Atualizador: backup e versão nova pendente (gerados no PC do usuário)
+_backup_anterior/
+*.novo
