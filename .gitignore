@@ -1,0 +1,15 @@
+# Binários de runtime (grandes): scrcpy-win64 + adb.exe vão em tools/ mas NÃO
+# entram no git. Baixe-os conforme o README.
+tools/**
+!tools/README.md
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Config/estado do usuário (fica em %APPDATA%, mas por via das dúvidas)
+*.local.json
+captures/

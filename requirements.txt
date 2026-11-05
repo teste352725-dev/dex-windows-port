@@ -1,0 +1,12 @@
+# Dependências do DEX para Windows.
+# Instale com:  pip install -r requirements.txt
+
+# Host do WebView (no Windows usa o WebView2/Edge automaticamente).
+pywebview>=5.4
+
+# Gerência de janelas + atalhos globais no Windows (Win32).
+# Marcador de ambiente: só instala no Windows; em Linux é ignorado.
+pywin32>=306 ; sys_platform == "win32"
+
+# Captura de tela do desktop (botão de screenshot). Opcional.
+Pillow>=10.0

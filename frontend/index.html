@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deck — Web Shell</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' file: data:; connect-src 'none'; object-src 'none'; base-uri 'none'">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="desktop" id="desktop">
+
+  <!-- WALLPAPER -->
+  <div class="wallpaper" aria-hidden="true">
+    <div class="wallpaper-glow wallpaper-glow--a"></div>
+    <div class="wallpaper-glow wallpaper-glow--b"></div>
+    <div class="wallpaper-sheen"></div>
+    <div class="wallpaper-grain"></div>
+  </div>
+
+  <!-- DESKTOP ICONS -->
+  <div class="desktop-icons" id="desktopIcons"></div>
+
+  <!-- SELECTION BOX (drag select, visual only) -->
+  <div class="selection-box" id="selectionBox" hidden></div>
+
+  <!-- APP LAUNCHER (estado do desktop) -->
+  <section class="launcher" id="launcher" hidden aria-hidden="true">
+    <div class="launcher-scrim"></div>
+    <div class="launcher-content">
+      <header class="launcher-header">
+        <nav class="launcher-tabs" id="launcherTabs">
+          <button class="launcher-tab is-active" data-tab="all">Apps</button>
+          <button class="launcher-tab" data-tab="favorites">Favoritos</button>
+          <button class="launcher-tab" data-tab="recent">Recentes</button>
+        </nav>
+        <label class="launcher-search">
+          <svg class="icon" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.7"/><line x1="15.6" y1="15.6" x2="20" y2="20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          <input type="text" id="launcherSearch" placeholder="Pesquisar aplicativos" autocomplete="off" spellcheck="false">
+        </label>
+      </header>
+
+      <div class="launcher-grid" id="launcherGrid"></div>
+      <p class="launcher-empty" id="launcherEmpty" hidden>Nenhum aplicativo encontrado</p>
+
+      <div class="launcher-pagination" id="launcherPagination"></div>
+    </div>
+  </section>
+
+  <!-- CONTEXT MENU -->
+  <div class="context-menu" id="contextMenu" hidden role="menu"></div>
+
+  <!-- VOLUME POPOVER -->
+  <div class="popover volume-popover" id="volumePopover" hidden></div>
+
+  <!-- QUICK SETTINGS PANEL -->
+  <div class="panel quick-settings" id="quickSettings" hidden></div>
+
+  <!-- NOTIFICATIONS PANEL -->
+  <div class="panel notifications-panel" id="notificationsPanel" hidden></div>
+
+  <!-- CALENDAR POPOVER -->
+  <div class="popover calendar-popover" id="calendarPopover" hidden></div>
+
+  <!-- SCREENSHOT FLASH -->
+  <div class="flash" id="flash" aria-hidden="true"></div>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast" hidden></div>
+
+  <!-- TASKBAR -->
+  <footer class="taskbar" id="taskbar">
+    <div class="taskbar-zone taskbar-zone--left">
+      <div class="nav-cluster">
+        <button class="nav-btn" id="navRecents" title="Recentes" data-tip="Recentes"></button>
+        <button class="nav-btn" id="navHome" title="Início" data-tip="Início"></button>
+        <button class="nav-btn" id="navBack" title="Voltar" data-tip="Voltar"></button>
+      </div>
+      <div class="taskbar-sep"></div>
+      <button class="icon-btn" id="appsBtn" title="Aplicativos" data-tip="Aplicativos"></button>
+      <label class="quick-search">
+        <svg class="icon" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.7"/><line x1="15.6" y1="15.6" x2="20" y2="20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        <input type="text" id="quickSearchInput" placeholder="Pesquisar ou executar comando">
+      </label>
+    </div>
+
+    <div class="taskbar-zone taskbar-zone--center" id="taskbarApps"></div>
+
+    <div class="taskbar-zone taskbar-zone--right">
+      <button class="icon-btn" id="captureBtn" title="Capturar tela" data-tip="Capturar tela"></button>
+      <button class="icon-btn" id="volumeBtn" title="Volume" data-tip="Volume"></button>
+      <button class="icon-btn" id="notifBtn" title="Notificações" data-tip="Notificações">
+        <span class="badge" id="notifBadge" hidden></span>
+      </button>
+      <button class="status-cluster" id="statusBtn" title="Status" data-tip="Configurações rápidas">
+        <span class="status-wifi"></span>
+        <span class="status-battery">
+          <span class="battery-shell"><span class="battery-fill" id="batteryFill"></span></span>
+          <span class="battery-pct" id="batteryPct">--%</span>
+        </span>
+      </button>
+      <button class="clock-cluster" id="clockBtn" data-tip="Calendário">
+        <span class="clock-time" id="clockTime">--:--</span>
+        <span class="clock-date" id="clockDate">—</span>
+      </button>
+    </div>
+  </footer>
+
+</div>
+
+<script src="native.js"></script>
+<script src="app.js"></script>
+<script src="settings_sections.js"></script>
+<script src="settings.js"></script>
+</body>
+</html>

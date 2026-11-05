@@ -1,0 +1,1065 @@
+/* ============================================================
+   AURA DESKTOP — Shell visual para ambiente desktop Android
+   ============================================================
+   Índice:
+   1. Tokens (cores, tipografia, espaçamento)   -> edite aqui as cores
+   2. Reset & base
+   3. Wallpaper / Desktop
+   4. Ícones de desktop
+   5. Taskbar                                    -> edite aqui a altura
+   6. Popovers (volume / calendário)
+   7. Painéis (quick settings / notificações)
+   8. Launcher de apps
+   9. Menu de contexto
+   10. Toast / flash / utilitários
+   11. Responsivo
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   1. TOKENS
+   Para trocar a identidade de cor do sistema, altere só este bloco.
+------------------------------------------------------------ */
+:root{
+  /* base do wallpaper */
+  --void:            #05070a;
+  --wall-a:          #0a1222;
+  --wall-b:          #0e1b33;
+  --wall-c:          #16304d;
+  --wall-aurora-b:   #231f4d;  /* 2º foco de aurora (base do glow indigo) */
+
+  /* acentos (derivados do wallpaper, uso moderado) */
+  --accent-cyan:      #7fe3c9;
+  --accent-cyan-dim:  #4fa693;
+  --accent-indigo:    #8b93ff;
+  --accent-indigo-dim:#5c62b8;
+  --accent-amber:     #ffb870;
+  --accent-red:       #ff6b6b;
+
+  /* superfícies (glass) */
+  --glass-1:          rgba(20, 24, 33, 0.55);
+  --glass-2:          rgba(15, 18, 26, 0.72);
+  --glass-3:          rgba(12, 15, 21, 0.86);
+  --glass-border:     rgba(255, 255, 255, 0.09);
+  --glass-border-hi:  rgba(255, 255, 255, 0.18);
+  --hairline:         rgba(255, 255, 255, 0.07);
+
+  --surface-solid:    #12151c;
+  --surface-raised:   #171b24;
+
+  /* texto */
+  --text-1:           #f1f3f7;
+  --text-2:           #aab0bd;
+  --text-3:           #767d8b;
+  --text-on-accent:   #0a0f0d;
+
+  /* forma */
+  --r-xs: 6px;
+  --r-sm: 10px;
+  --r-md: 16px;
+  --r-lg: 22px;
+  --r-xl: 28px;
+  --r-pill: 999px;
+
+  /* sombra / profundidade */
+  --shadow-1: 0 2px 10px rgba(0,0,0,0.28);
+  --shadow-2: 0 10px 34px rgba(0,0,0,0.38);
+  --shadow-3: 0 22px 60px rgba(0,0,0,0.5), 0 4px 14px rgba(0,0,0,0.35);
+  --ring-focus: 0 0 0 2px rgba(127, 227, 201, 0.55);
+
+  /* movimento */
+  --ease: cubic-bezier(.22,.85,.32,1);
+  --ease-out-soft: cubic-bezier(.16,1,.3,1);
+  --dur-fast: 120ms;
+  --dur-med: 220ms;
+  --dur-slow: 380ms;
+
+  /* medidas do sistema */
+  --taskbar-h: 52px;
+  --icon-col-w: 92px;
+  --icon-row-h: 96px;
+
+  /* tipografia */
+  --font-ui: 'Segoe UI Variable Text','Segoe UI',Roboto,-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;
+}
+
+/* ------------------------------------------------------------
+   2. RESET & BASE
+------------------------------------------------------------ */
+*, *::before, *::after{ box-sizing: border-box; }
+html, body{
+  margin:0; padding:0; width:100%; height:100%;
+  overflow:hidden;
+  background: var(--void);
+  font-family: var(--font-ui);
+  color: var(--text-1);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  user-select: none;
+}
+button{
+  font-family: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+input, textarea{
+  font-family: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  outline: none;
+}
+/* Sem isto, o WebKitGTK desenha o campo nativo do GTK (uma caixa quadrada)
+   ao focar/digitar, furando o visual arredondado das pílulas de busca.
+   Checkbox/radio ficam de fora para preservarem o controle nativo. */
+input:not([type=checkbox]):not([type=radio]), textarea{
+  -webkit-appearance: none;
+  appearance: none;
+}
+/* Remove a decoração nativa do input[type=search] (lupa/x do WebKit/Blink). */
+input[type=search]::-webkit-search-decoration,
+input[type=search]::-webkit-search-cancel-button{ -webkit-appearance:none; appearance:none; }
+button:focus-visible, input:focus-visible, [tabindex]:focus-visible{
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+/* Nas pílulas de busca o foco é indicado pelo container (:focus-within), então
+   o input interno (border-radius:0) não deve desenhar o anel retangular. */
+.quick-search input:focus-visible,
+.launcher-search input:focus-visible{ box-shadow: none; }
+svg{ display:block; }
+.icon{ width:18px; height:18px; color: currentColor; flex-shrink:0; }
+@media (prefers-reduced-motion: reduce){
+  *{ animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+/* ------------------------------------------------------------
+   3. WALLPAPER / DESKTOP
+------------------------------------------------------------ */
+.desktop{
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.wallpaper{
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(110% 80% at 78% 0%, var(--wall-c) 0%, transparent 52%),
+    radial-gradient(90% 70% at 12% 100%, var(--wall-aurora-b) 0%, transparent 55%),
+    linear-gradient(165deg, var(--wall-b) 0%, var(--wall-a) 48%, var(--void) 100%);
+}
+.wallpaper-glow{
+  /* Estático por padrão: nada de animation/will-change aqui.
+     Um elemento grande + filter:blur() + transform animado força o
+     compositor a recompor a cada frame, mesmo com o desktop parado —
+     exatamente o tipo de consumo de GPU que este shell precisa evitar
+     em hardware modesto. Iluminação estática tem o mesmo efeito visual
+     por uma fração do custo. */
+  position:absolute;
+  border-radius:50%;
+  filter: blur(100px);
+  opacity:.62;
+}
+.wallpaper-glow--a{
+  width:56vw; height:56vw;
+  top:-18vw; right:-10vw;
+  background: radial-gradient(circle, rgba(127,227,201,.5), transparent 68%);
+}
+.wallpaper-glow--b{
+  width:46vw; height:46vw;
+  bottom:-20vw; left:-12vw;
+  background: radial-gradient(circle, rgba(139,147,255,.42), transparent 68%);
+}
+.wallpaper-sheen{
+  position:absolute; inset:0;
+  background: repeating-linear-gradient(
+    115deg,
+    rgba(255,255,255,0.028) 0px,
+    rgba(255,255,255,0.028) 1px,
+    transparent 1px,
+    transparent 68px
+  );
+  mix-blend-mode: screen;
+  opacity: .5;
+}
+.wallpaper-grain{
+  position:absolute; inset:0;
+  background-image: radial-gradient(rgba(255,255,255,0.035) 1px, transparent 1px);
+  background-size: 3px 3px;
+  opacity:.35;
+  pointer-events:none;
+}
+
+/* ------------------------------------------------------------
+   4. ÍCONES DE DESKTOP
+------------------------------------------------------------ */
+.desktop-icons{
+  /* Altura real disponível (viewport menos taskbar menos respiro superior/
+     inferior) alimenta grid-auto-flow:column com linhas auto-fill — o
+     número de linhas se adapta à resolução real em vez de depender de
+     breakpoints de largura sincronizados "por coincidência" com a altura. */
+  position:absolute;
+  top: 22px; left: 20px;
+  height: calc(100vh - var(--taskbar-h) - 40px);
+  display:grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(auto-fill, var(--icon-row-h));
+  gap: 2px;
+  z-index: 2;
+}
+.desktop-icon{
+  width: var(--icon-col-w);
+  height: var(--icon-row-h);
+  display:flex; flex-direction:column; align-items:center;
+  justify-content:flex-start;
+  gap:6px;
+  padding: 8px 4px 6px;
+  border-radius: var(--r-sm);
+  text-align:center;
+  cursor:default;
+  transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.desktop-icon:hover{ background: rgba(255,255,255,0.07); transform: translateY(-2px); }
+.desktop-icon.is-selected{
+  background: rgba(127,227,201,0.14);
+  outline: 1px solid rgba(127,227,201,0.35);
+}
+.desktop-icon .tile{ width:48px; height:48px; }
+.desktop-icon .label{
+  font-size: 11.5px;
+  line-height: 1.25;
+  color: var(--text-1);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+  max-width: 82px;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+  font-weight: 500;
+}
+
+/* Tile de app reutilizável (desktop / launcher / taskbar) */
+.tile{
+  position:relative;
+  border-radius: 13px;
+  display:flex; align-items:center; justify-content:center;
+  flex-shrink:0;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 5px 14px rgba(0,0,0,0.4);
+}
+.tile svg{ width: 58%; height: 58%; color: rgba(255,255,255,0.96); }
+.tile.tile--sm{ width:26px; height:26px; border-radius:8px; }
+.tile.tile--md{ width:36px; height:36px; border-radius:10px; }
+.tile.tile--lg{ width:52px; height:52px; border-radius:14px; }
+
+/* Ícone real (img/svg vindo do backend) — sem moldura, sem fundo colorido,
+   sem sombra de plate. Usado quando app.iconUrl está definido; o glifo
+   colorido acima continua sendo o fallback enquanto não há ícone real. */
+.tile.tile--img{ background:none; box-shadow:none; }
+.tile.tile--img img{ width:100%; height:100%; object-fit:contain; border-radius:inherit; display:block; }
+
+/* Caixa de seleção (arraste no desktop) */
+.selection-box{
+  position:absolute;
+  border:1px solid rgba(127,227,201,0.55);
+  background: rgba(127,227,201,0.09);
+  border-radius:2px;
+  z-index:5;
+  pointer-events:none;
+}
+
+/* ------------------------------------------------------------
+   5. TASKBAR
+   Para alterar a altura, edite --taskbar-h no bloco de tokens.
+------------------------------------------------------------ */
+.taskbar{
+  position:absolute; left:0; right:0; bottom:0;
+  height: var(--taskbar-h);
+  display:grid;
+  /* colunas laterais em 1fr + centro em minmax(0,auto): o cluster de apps
+     fica genuinamente centralizado na barra inteira, mesmo quando a zona
+     esquerda e a direita têm larguras diferentes (o que um flex:1 no meio
+     não garante — ele só centraliza dentro do espaço sobrando). */
+  grid-template-columns: 1fr minmax(0, auto) 1fr;
+  align-items:center;
+  padding: 0 10px;
+  background: linear-gradient(180deg, rgba(13,16,22,0.5), rgba(9,11,16,0.82));
+  -webkit-backdrop-filter: blur(13px) saturate(130%);
+  backdrop-filter: blur(13px) saturate(130%);
+  border-top: 1px solid var(--hairline);
+  box-shadow: 0 -1px 0 rgba(255,255,255,0.02), 0 -14px 40px rgba(0,0,0,0.25);
+  z-index: 40;
+}
+.taskbar-zone{ display:flex; align-items:center; gap:4px; height:100%; min-width:0; }
+.taskbar-zone--left{ justify-self:start; }
+.taskbar-zone--center{
+  /* Dock de vidro: o cluster de apps ganha uma pílula translúcida própria,
+     ancorada ao centro da barra. Mantém a lógica/markup; é só superfície. */
+  justify-self:center; justify-content:center; gap:3px; min-width:0; overflow:visible;
+  height:44px; align-self:center; padding:0 8px;
+  background: rgba(255,255,255,0.055);
+  border:1px solid rgba(255,255,255,0.11);
+  border-radius: var(--r-pill);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 6px 20px rgba(0,0,0,0.35);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+/* Sem apps no cluster: não desenha uma pílula vazia flutuando. */
+.taskbar-zone--center:empty{ background:none; border:none; box-shadow:none; padding:0; }
+.taskbar-zone--right{ justify-self:end; gap:2px; }
+
+.nav-cluster{ display:flex; align-items:center; gap:2px; margin-right:6px; }
+.nav-btn{
+  width:34px; height:34px;
+  border-radius: var(--r-sm);
+  display:flex; align-items:center; justify-content:center;
+  color: var(--text-2);
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.nav-btn svg{ width:16px; height:16px; }
+.nav-btn:hover{ background: rgba(255,255,255,0.07); color: var(--text-1); }
+.nav-btn:active{ transform: scale(.92); }
+
+.taskbar-sep{
+  width:1px; height:22px;
+  background: var(--hairline);
+  margin: 0 6px;
+}
+
+.icon-btn{
+  position:relative;
+  width:34px; height:34px;
+  border-radius: var(--r-sm);
+  display:flex; align-items:center; justify-content:center;
+  color: var(--text-2);
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.icon-btn svg{ width:18px; height:18px; }
+.icon-btn:hover{ background: rgba(255,255,255,0.07); color: var(--text-1); }
+.icon-btn:active{ transform: scale(.92); }
+.icon-btn.is-active{ background: rgba(127,227,201,0.16); color: var(--accent-cyan); }
+
+#appsBtn{ margin-right:4px; }
+
+.quick-search{
+  display:flex; align-items:center; gap:8px;
+  height:32px;
+  padding: 0 12px 0 10px;
+  border-radius: var(--r-pill);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--hairline);
+  color: var(--text-3);
+  width: 176px;
+  transition: width var(--dur-med) var(--ease), background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.quick-search:focus-within{
+  background: rgba(255,255,255,0.08);
+  border-color: var(--glass-border-hi);
+  color: var(--text-2);
+  width: 220px;
+}
+.quick-search .icon{ width:15px; height:15px; opacity:.85; }
+.quick-search input{ font-size:12.5px; width:100%; color:var(--text-1); }
+.quick-search input::placeholder{ color: var(--text-3); }
+
+/* apps na taskbar (fixados + abertos) */
+.taskbar-app{
+  position:relative;
+  width:38px; height:38px;
+  border-radius: var(--r-sm);
+  display:flex; align-items:center; justify-content:center;
+  transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+  flex-shrink:0;
+}
+.taskbar-app:hover{ background: rgba(255,255,255,0.07); }
+.taskbar-app:active{ transform: scale(.92); }
+.taskbar-app .tile{ width:26px; height:26px; }
+.taskbar-app .dot{
+  position:absolute; bottom:2px; left:50%; transform:translateX(-50%);
+  width:4px; height:4px; border-radius:50%;
+  background: var(--text-3);
+  opacity:0;
+  transition: opacity var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease), width var(--dur-fast) var(--ease);
+}
+.taskbar-app.is-open .dot{ opacity:1; }
+.taskbar-app.is-active .dot{ background: var(--accent-cyan); width:12px; border-radius:3px; opacity:1; }
+.taskbar-app.is-active{ background: rgba(255,255,255,0.055); }
+
+.badge{
+  position:absolute; top:4px; right:4px;
+  width:7px; height:7px; border-radius:50%;
+  background: var(--accent-amber);
+  box-shadow: 0 0 0 2px rgba(10,12,17,0.9);
+}
+
+.status-cluster, .clock-cluster{
+  display:flex; align-items:center; gap:8px;
+  height:34px;
+  padding: 0 10px;
+  border-radius: var(--r-sm);
+  transition: background var(--dur-fast) var(--ease);
+}
+.status-cluster:hover, .clock-cluster:hover{ background: rgba(255,255,255,0.07); }
+.status-wifi{ width:15px; height:15px; color: var(--text-2); flex-shrink:0; }
+.status-wifi svg{ width:100%; height:100%; }
+.status-battery{ display:flex; align-items:center; gap:6px; }
+.battery-shell{
+  width:22px; height:11px;
+  border: 1.4px solid var(--text-2);
+  border-radius: 3px;
+  position:relative;
+  padding:1.5px;
+  display:flex;
+}
+.battery-shell::after{
+  content:'';
+  position:absolute; right:-3px; top:50%; transform:translateY(-50%);
+  width:2px; height:4px;
+  background: var(--text-2);
+  border-radius:0 1px 1px 0;
+}
+.battery-fill{
+  display:block; height:100%; width:82%;
+  background: var(--accent-cyan);
+  border-radius:1px;
+  transition: width var(--dur-slow) var(--ease), background var(--dur-med) var(--ease);
+}
+.battery-pct{ font-size:12px; color:var(--text-2); font-variant-numeric: tabular-nums; }
+
+.clock-cluster{ flex-direction:column; align-items:flex-end; gap:0; padding-top:3px; padding-bottom:3px; }
+.clock-time{ font-size:13px; font-weight:600; color:var(--text-1); line-height:1.25; font-variant-numeric: tabular-nums; }
+.clock-date{ font-size:10.5px; color:var(--text-3); line-height:1.25; }
+
+/* tooltip discreto */
+[data-tip]{ position:relative; }
+[data-tip]::after{
+  content: attr(data-tip);
+  position:absolute; bottom: calc(100% + 8px); left:50%; transform: translateX(-50%) translateY(4px);
+  background: rgba(15,17,23,0.95);
+  border:1px solid var(--glass-border);
+  color: var(--text-1);
+  font-size:11px; font-weight:500;
+  padding: 5px 9px;
+  border-radius: 7px;
+  white-space:nowrap;
+  opacity:0; pointer-events:none;
+  transition: opacity var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+  box-shadow: var(--shadow-1);
+  z-index:60;
+}
+[data-tip]:hover::after{ opacity:1; transform: translateX(-50%) translateY(0); transition-delay: 380ms; }
+
+/* ------------------------------------------------------------
+   6. POPOVERS (volume / calendário)
+------------------------------------------------------------ */
+.popover{
+  position:absolute;
+  z-index: 55;
+  background: var(--glass-2);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  backdrop-filter: blur(22px) saturate(150%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-3);
+  transform-origin: bottom right;
+  animation: pop-in var(--dur-med) var(--ease-out-soft);
+}
+@keyframes pop-in{
+  from{ opacity:0; transform: translateY(10px) scale(.96); }
+  to{ opacity:1; transform: translateY(0) scale(1); }
+}
+.popover[data-closing]{ animation: pop-out var(--dur-fast) var(--ease) forwards; }
+@keyframes pop-out{
+  to{ opacity:0; transform: translateY(8px) scale(.97); }
+}
+
+.volume-popover{
+  right: 168px;
+  bottom: calc(var(--taskbar-h) + 10px);
+  width: 268px;
+  padding: 14px 16px;
+}
+.volume-row{ display:flex; align-items:center; gap:12px; }
+.volume-row .icon-btn{ background: rgba(255,255,255,0.05); }
+.volume-slider{
+  flex:1;
+  -webkit-appearance:none; appearance:none;
+  height:4px; border-radius:2px;
+  background: linear-gradient(to right, var(--accent-cyan) 0%, var(--accent-cyan) var(--val,70%), rgba(255,255,255,0.14) var(--val,70%), rgba(255,255,255,0.14) 100%);
+  cursor:pointer;
+}
+.volume-slider::-webkit-slider-thumb{
+  -webkit-appearance:none; appearance:none;
+  width:14px; height:14px; border-radius:50%;
+  background: var(--text-1);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+  cursor:pointer;
+  transition: transform var(--dur-fast) var(--ease);
+}
+.volume-slider::-webkit-slider-thumb:hover{ transform: scale(1.15); }
+.volume-more{ width:30px; height:30px; border-radius:8px; color:var(--text-2); flex-shrink:0; }
+.volume-more:hover{ background: rgba(255,255,255,0.07); color:var(--text-1); }
+.volume-label{ display:flex; justify-content:space-between; margin-top:10px; font-size:11px; color:var(--text-3); }
+.volume-outputs{ margin-top:10px; padding-top:10px; border-top:1px solid var(--hairline); display:none; flex-direction:column; gap:2px; }
+.volume-outputs.is-open{ display:flex; }
+.volume-output-item{
+  display:flex; align-items:center; gap:10px;
+  padding:7px 8px; border-radius:8px; font-size:12.5px; color:var(--text-2);
+}
+.volume-output-item:hover{ background: rgba(255,255,255,0.06); color:var(--text-1); }
+.volume-output-item.is-selected{ color:var(--accent-cyan); }
+.volume-output-item .icon{ width:15px; height:15px; }
+
+.calendar-popover{
+  right: 10px;
+  bottom: calc(var(--taskbar-h) + 10px);
+  width: 272px;
+  padding: 16px;
+}
+.cal-header{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:10px; }
+.cal-month{ font-size:14px; font-weight:600; }
+.cal-nav{ display:flex; gap:2px; }
+.cal-nav button{ width:24px; height:24px; border-radius:6px; color:var(--text-2); display:flex; align-items:center; justify-content:center; }
+.cal-nav button:hover{ background: rgba(255,255,255,0.07); color:var(--text-1); }
+.cal-nav .icon{ width:13px; height:13px; }
+.cal-grid{ display:grid; grid-template-columns: repeat(7, 1fr); gap:3px; text-align:center; }
+.cal-dow{ font-size:10px; color:var(--text-3); padding-bottom:4px; font-weight:600; }
+.cal-day{
+  font-size:12px; color: var(--text-2);
+  height:26px; display:flex; align-items:center; justify-content:center;
+  border-radius:8px; position:relative;
+}
+.cal-day.is-muted{ color: var(--text-3); opacity:.4; }
+.cal-day.is-weekend{ color: var(--accent-red); opacity:.75; }
+.cal-day.is-today{ background: var(--accent-cyan); color: var(--text-on-accent); font-weight:700; }
+/* indicador discreto de dia com evento (ponto sob o número) */
+.cal-day.has-event::after{
+  content:'';
+  position:absolute; left:50%; bottom:2px; transform:translateX(-50%);
+  width:3px; height:3px; border-radius:50%;
+  background: var(--accent-indigo);
+}
+.cal-day.is-today.has-event::after{ background: var(--text-on-accent); }
+.cal-events{ margin-top:14px; padding-top:12px; border-top:1px solid var(--hairline); }
+.cal-events-title{ font-size:10px; color:var(--text-3); font-weight:600; text-transform:uppercase; letter-spacing:.04em; margin-bottom:8px; }
+.cal-events-empty{ font-size:12px; color: var(--text-3); text-align:center; padding: 6px 0 2px; }
+.cal-event{ display:flex; gap:9px; align-items:center; padding:5px 2px; font-size:12px; }
+.cal-event-dot{ width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+.cal-event-time{ color:var(--text-3); font-size:11px; font-variant-numeric:tabular-nums; flex-shrink:0; width:34px; }
+.cal-event-title{ color:var(--text-1); font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* ------------------------------------------------------------
+   7. PAINÉIS (quick settings / notificações)
+------------------------------------------------------------ */
+.panel{
+  position:absolute;
+  right: 10px;
+  bottom: calc(var(--taskbar-h) + 10px);
+  z-index: 50;
+  background: var(--glass-2);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  backdrop-filter: blur(24px) saturate(150%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-3);
+  animation: pop-in var(--dur-med) var(--ease-out-soft);
+}
+.panel[data-closing]{ animation: pop-out var(--dur-fast) var(--ease) forwards; }
+
+.quick-settings{ width: 324px; padding: 14px; }
+
+/* cabeçalho: nome do dispositivo + status de conexão */
+.qs-device{
+  display:flex; align-items:center; justify-content:space-between;
+  padding: 2px 4px 11px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--hairline);
+}
+.qs-device-id{ display:flex; align-items:center; gap:8px; min-width:0; }
+.qs-device-dot{
+  width:7px; height:7px; border-radius:50%; flex-shrink:0;
+  background: var(--text-3);
+}
+.qs-device-dot.is-online{
+  background: var(--accent-cyan);
+  box-shadow: 0 0 0 3px rgba(127,227,201,0.18);
+}
+.qs-device-name{ font-size:12.5px; font-weight:600; color:var(--text-1); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.qs-device-status{ font-size:10.5px; color:var(--text-3); flex-shrink:0; }
+
+.qs-toprow{ display:flex; gap:7px; margin-bottom:7px; }
+.qs-primary{
+  flex:1;
+  min-width:0;
+  display:flex; align-items:center; gap:9px;
+  padding: 9px 10px;
+  border-radius: var(--r-md);
+  background: rgba(255,255,255,0.045);
+  border:1px solid var(--hairline);
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.qs-primary:hover{ background: rgba(255,255,255,0.07); }
+.qs-primary.is-on{
+  background: linear-gradient(135deg, rgba(127,227,201,0.22), rgba(139,147,255,0.14));
+  border-color: rgba(127,227,201,0.35);
+}
+/* WebKitGTK: repetir este gradiente pode pintar uma textura corrompida. */
+.qs-primary[data-qs="wifi"].is-on{ background-repeat: no-repeat; }
+.deck-settings-link{ width:100%; color:var(--text-2); text-align:left; cursor:pointer; }
+.deck-settings-pick{
+  margin-top:6px; align-self:flex-start; padding:7px 12px; cursor:pointer;
+  font-size:12px; font-weight:600; color:var(--text-1);
+  background:rgba(127,227,201,0.14); border:1px solid var(--glass-border);
+  border-radius:var(--r-sm, 8px);
+}
+.deck-settings-pick:hover{ background:rgba(127,227,201,0.22); }
+.deck-settings-pick:disabled{ opacity:0.5; cursor:default; }
+#deckSettings{
+  position:fixed; z-index:90; right:10px; bottom:64px;
+  width:min(460px, calc(100vw - 20px)); max-height:calc(100vh - 84px);
+  overflow:auto; padding:18px; box-sizing:border-box;
+  background:var(--glass-2); border:1px solid var(--glass-border);
+  border-radius:var(--r-lg); box-shadow:var(--shadow-3);
+  -webkit-backdrop-filter:blur(22px) saturate(150%);
+  backdrop-filter:blur(22px) saturate(150%);
+}
+#deckSettings[hidden]{ display:none; }
+#deckSettings header, #deckSettings footer{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+#deckSettings h2{ font-size:16px; margin:0; font-weight:600; }
+#deckSettings .deck-settings-note, #deckSettings [role=status]{ font-size:11px; line-height:1.5; color:var(--text-3); }
+#deckSettings details{ border-top:1px solid var(--hairline); padding:12px 0; }
+#deckSettings summary{ cursor:pointer; font-size:12px; font-weight:600; color:var(--text-2); }
+#deckSettings label{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:12px; font-size:12px; }
+#deckSettings label span{ flex:1; }
+#deckSettings select, #deckSettings input:not([type=checkbox]){
+  min-width:0; width:52%; padding:7px; border-radius:var(--r-sm);
+  background:rgba(255,255,255,.05); border:1px solid var(--hairline);
+  color:var(--text-1); font:inherit;
+}
+#deckSettings option{ background:#171c24; color:var(--text-1); }
+#deckSettings select{ -webkit-appearance:none; appearance:none; color-scheme:dark; cursor:pointer; }
+#deckSettings input[type=checkbox]{ accent-color:var(--accent-cyan); }
+#deckSettings footer button{ padding:9px 18px; color:var(--accent-cyan); }
+#deckSettings .deck-host-actions{ display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+#deckSettings .deck-host-actions button{ padding:9px 12px; width:auto; }
+.qs-primary .icon-wrap{
+  width:30px; height:30px; border-radius:9px;
+  display:flex; align-items:center; justify-content:center;
+  background: rgba(255,255,255,0.07); color: var(--text-2);
+  flex-shrink:0;
+}
+.qs-primary.is-on .icon-wrap{ background: var(--accent-cyan); color: var(--text-on-accent); }
+.qs-primary .icon-wrap .icon{ width:16px; height:16px; }
+.qs-primary-text{ display:flex; flex-direction:column; text-align:left; min-width:0; }
+.qs-primary-title{ display:block; font-size:12px; font-weight:600; color:var(--text-1); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.qs-primary-sub{ display:block; font-size:10.5px; color:var(--text-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+.qs-grid{ display:grid; grid-template-columns: repeat(4, 1fr); gap:7px; margin-bottom: 7px; }
+.qs-tile{
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+  padding: 9px 4px 8px;
+  border-radius: var(--r-md);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--hairline);
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.qs-tile:hover{ background: rgba(255,255,255,0.075); }
+.qs-tile:active{ transform: scale(.96); }
+.qs-tile.is-on{
+  background: rgba(127,227,201,0.16);
+  border-color: rgba(127,227,201,0.32);
+  color: var(--accent-cyan);
+}
+.qs-tile .icon{ width:18px; height:18px; color: inherit; }
+.qs-tile-label{ font-size:10.5px; color: var(--text-2); font-weight:500; }
+.qs-tile.is-on .qs-tile-label{ color: var(--accent-cyan); }
+
+.qs-slider-row{
+  display:flex; align-items:center; gap:10px;
+  padding: 8px 11px;
+  border-radius: var(--r-md);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--hairline);
+  margin-bottom:7px;
+}
+.qs-slider-row .icon{ width:16px; height:16px; color:var(--text-2); flex-shrink:0; }
+.qs-slider-row .volume-slider{ height:3px; }
+
+.qs-media{
+  display:flex; align-items:center; gap:10px;
+  padding: 9px 11px;
+  border-radius: var(--r-md);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--hairline);
+}
+.qs-media .icon-wrap{
+  width:32px; height:32px; border-radius:9px;
+  background: rgba(255,255,255,0.07);
+  display:flex; align-items:center; justify-content:center; color:var(--text-2);
+  flex-shrink:0;
+}
+.qs-media-text{ display:flex; flex-direction:column; min-width:0; }
+.qs-media-title{ display:block; font-size:12px; font-weight:600; color:var(--text-1); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.qs-media-sub{ display:block; font-size:10.5px; color:var(--text-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+.notifications-panel{ width: 340px; max-height: 62vh; display:flex; flex-direction:column; }
+.notif-header{
+  display:flex; align-items:center; justify-content:space-between;
+  padding: 15px 16px 10px;
+}
+.notif-title{ font-size:13.5px; font-weight:700; }
+.notif-count{ font-size:11px; color:var(--text-3); }
+.notif-list{
+  overflow-y:auto;
+  padding: 2px 8px 8px;
+  display:flex; flex-direction:column; gap:4px;
+}
+.notif-list::-webkit-scrollbar{ width:6px; }
+.notif-list::-webkit-scrollbar-thumb{ background: rgba(255,255,255,0.12); border-radius:3px; }
+.notif-item{
+  display:flex; gap:11px;
+  padding: 10px 8px;
+  border-radius: var(--r-md);
+  transition: background var(--dur-fast) var(--ease);
+  position:relative;
+  touch-action: pan-y; /* deixa o gesto horizontal p/ dispensar, vertical p/ rolar */
+}
+.notif-item:hover{ background: rgba(255,255,255,0.05); }
+/* Arrastar para dispensar: sem transição enquanto segue o dedo; com transição
+   suave no snap-back ou na saída. */
+.notif-item.notif-dragging{ transition: none; cursor: grabbing; background: rgba(255,255,255,0.05); }
+.notif-item.notif-removing{
+  transition: transform var(--dur-med) var(--ease), opacity var(--dur-med) var(--ease);
+}
+.notif-item:hover .notif-dismiss{ opacity:1; transform:scale(1); }
+.notif-icon{
+  width:34px; height:34px; border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  flex-shrink:0; color:#fff;
+  /* Mesma linguagem tátil dos tiles de app (realce interno + sombra suave),
+     para o ícone colorido da notificação combinar com o resto do shell. */
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 7px rgba(0,0,0,0.32);
+}
+.notif-icon .icon{ width:17px; height:17px; }
+.notif-body{ flex:1; min-width:0; }
+.notif-row1{ display:flex; justify-content:space-between; gap:8px; align-items:baseline; }
+.notif-app{ font-size:12.5px; font-weight:600; color:var(--text-1); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.notif-time{ font-size:10.5px; color:var(--text-3); flex-shrink:0; }
+.notif-text{ font-size:11.5px; color:var(--text-2); line-height:1.4; margin-top:1px; }
+.notif-dismiss{
+  position:absolute; top:8px; right:6px;
+  width:20px; height:20px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  color:var(--text-3);
+  opacity:0; transform: scale(.8);
+  transition: opacity var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.notif-dismiss:hover{ background: rgba(255,255,255,0.1); color:var(--text-1); }
+.notif-dismiss .icon{ width:11px; height:11px; }
+.notif-empty{ text-align:center; padding: 34px 10px 30px; color:var(--text-3); font-size:12.5px; }
+.notif-footer{
+  display:flex; justify-content:space-between; align-items:center;
+  padding: 10px 16px 14px;
+  border-top: 1px solid var(--hairline);
+}
+.notif-link{ font-size:11.5px; color:var(--text-3); font-weight:500; }
+.notif-link:hover{ color:var(--text-1); }
+.notif-clear{
+  font-size:11.5px; font-weight:600; color: var(--accent-cyan);
+  padding:6px 12px; border-radius:var(--r-pill);
+  background: rgba(127,227,201,0.12);
+}
+.notif-clear:hover{ background: rgba(127,227,201,0.2); }
+
+/* ------------------------------------------------------------
+   8. LAUNCHER DE APPS
+   Estado do próprio desktop — a taskbar continua visível.
+------------------------------------------------------------ */
+.launcher{
+  position:absolute; inset:0;
+  z-index: 30;
+}
+.launcher-scrim{
+  position:absolute; inset:0;
+  background: rgba(4,6,9,0.42);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  opacity:0;
+  animation: fade-in var(--dur-slow) var(--ease-out-soft) forwards;
+}
+@keyframes fade-in{ to{ opacity:1; } }
+.launcher-content{
+  position:relative;
+  height: calc(100% - var(--taskbar-h));
+  padding: clamp(28px, 4vh, 56px) clamp(32px, 6vw, 96px) 24px;
+  display:flex; flex-direction:column;
+  opacity:0;
+  transform: translateY(10px) scale(.99);
+  animation: launcher-in var(--dur-slow) var(--ease-out-soft) forwards;
+  animation-delay: 40ms;
+}
+@keyframes launcher-in{
+  to{ opacity:1; transform: translateY(0) scale(1); }
+}
+.launcher[data-closing] .launcher-content{ animation: launcher-out var(--dur-fast) var(--ease) forwards; }
+.launcher[data-closing] .launcher-scrim{ animation: fade-out var(--dur-fast) var(--ease) forwards; }
+@keyframes launcher-out{ to{ opacity:0; transform: translateY(8px) scale(.99); } }
+@keyframes fade-out{ to{ opacity:0; } }
+
+.launcher-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom: 34px; flex-shrink:0; }
+.launcher-tabs{ display:flex; gap:22px; }
+.launcher-tab{
+  font-size:13.5px; font-weight:600; color: var(--text-3);
+  padding: 6px 2px; position:relative;
+  transition: color var(--dur-fast) var(--ease);
+}
+.launcher-tab:hover{ color: var(--text-2); }
+.launcher-tab.is-active{ color: var(--text-1); }
+.launcher-tab.is-active::after{
+  content:''; position:absolute; left:0; right:0; bottom:-3px; height:2px;
+  background: var(--accent-cyan); border-radius:2px;
+}
+.launcher-search{
+  display:flex; align-items:center; gap:9px;
+  width: 264px; height:38px;
+  padding: 0 14px;
+  border-radius: var(--r-pill);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--glass-border);
+}
+.launcher-search:focus-within{ background: rgba(255,255,255,0.09); border-color: var(--glass-border-hi); }
+.launcher-search .icon{ color: var(--text-3); }
+.launcher-search input{ flex:1; font-size:13px; color:var(--text-1); }
+.launcher-search input::placeholder{ color: var(--text-3); }
+
+.launcher-grid{
+  flex:1;
+  display:grid;
+  grid-template-columns: repeat(auto-fill, 96px);
+  grid-auto-rows: 96px;
+  justify-content: space-between;
+  align-content:flex-start;
+  row-gap: 6px;
+  overflow:hidden;
+}
+.launcher-app{
+  display:flex; flex-direction:column; align-items:center; gap:8px;
+  padding-top:6px;
+  border-radius: var(--r-md);
+  transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+  animation: app-in var(--dur-med) var(--ease-out-soft) backwards;
+}
+@keyframes app-in{ from{ opacity:0; transform: translateY(6px); } to{ opacity:1; transform:translateY(0);} }
+.launcher-app:hover{ background: rgba(255,255,255,0.05); }
+.launcher-app:active{ transform: scale(.95); }
+.launcher-app .tile{ width:52px; height:52px; }
+.launcher-app .label{
+  font-size:11.5px; color: var(--text-2); font-weight:500;
+  max-width: 84px; text-align:center;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.launcher-empty{ text-align:center; color: var(--text-3); font-size:13px; margin-top: 60px; }
+
+.launcher-pagination{
+  display:flex; justify-content:center; align-items:center; gap:7px;
+  padding-top: 14px; flex-shrink:0;
+}
+.launcher-dot{
+  width:6px; height:6px; border-radius:50%;
+  background: rgba(255,255,255,0.22);
+  transition: background var(--dur-fast) var(--ease), width var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.launcher-dot:hover{ background: rgba(255,255,255,0.4); }
+.launcher-dot.is-active{ background: var(--accent-cyan); width:18px; border-radius:3px; }
+
+/* Navegação por gesto entre páginas de apps (arrastar / roda / setas).
+   O grid desliza horizontalmente; a entrada escalonada dos ícones (app-in)
+   cuida do fade, então aqui animamos só a posição — sem dupla animação. */
+.launcher-grid.is-swipeable{ cursor: grab; }
+.launcher-grid.is-dragging{ cursor: grabbing; animation: none !important; }
+.launcher-grid.is-dragging .launcher-app{ animation: none; }
+@keyframes launcher-slide-right{ from{ transform: translateX(44px); } to{ transform: translateX(0); } }
+@keyframes launcher-slide-left{  from{ transform: translateX(-44px); } to{ transform: translateX(0); } }
+.launcher-grid.slide-from-right{ animation: launcher-slide-right var(--dur-med) var(--ease-out-soft); }
+.launcher-grid.slide-from-left{  animation: launcher-slide-left var(--dur-med) var(--ease-out-soft); }
+
+/* ------------------------------------------------------------
+   9. MENU DE CONTEXTO
+------------------------------------------------------------ */
+.context-menu{
+  position:absolute;
+  z-index: 70;
+  min-width: 216px;
+  padding: 6px;
+  background: var(--glass-3);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  backdrop-filter: blur(22px) saturate(150%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-3);
+  transform-origin: top left;
+  animation: menu-in var(--dur-fast) var(--ease-out-soft);
+}
+@keyframes menu-in{
+  from{ opacity:0; transform: scale(.94) translateY(-4px); }
+  to{ opacity:1; transform: scale(1) translateY(0); }
+}
+.ctx-item{
+  display:flex; align-items:center; gap:11px;
+  width:100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  color: var(--text-1);
+  text-align:left;
+}
+.ctx-item:hover{ background: rgba(255,255,255,0.08); }
+.ctx-item:disabled{ color: var(--text-3); cursor:default; }
+.ctx-item:disabled:hover{ background:none; }
+.ctx-item .icon{ width:15px; height:15px; color: var(--text-2); flex-shrink:0; }
+.ctx-item span{ flex:1; }
+.ctx-item small{ color: var(--text-3); font-size:10.5px; }
+.ctx-sep{ height:1px; background: var(--hairline); margin: 5px 6px; }
+
+/* ------------------------------------------------------------
+   10. TOAST / FLASH / UTILITÁRIOS
+------------------------------------------------------------ */
+.flash{
+  position:absolute; inset:0;
+  background:#fff;
+  opacity:0;
+  pointer-events:none;
+  z-index: 90;
+}
+.flash.is-active{ animation: flash-pop 420ms ease-out; }
+@keyframes flash-pop{
+  0%{ opacity:0; }
+  12%{ opacity:.85; }
+  100%{ opacity:0; }
+}
+
+.toast{
+  position:absolute;
+  max-width:calc(100% - 32px);
+  overflow-wrap:anywhere;
+  left:50%; bottom: calc(var(--taskbar-h) + 18px);
+  transform: translateX(-50%) translateY(8px);
+  background: var(--glass-3);
+  border: 1px solid var(--glass-border);
+  color: var(--text-1);
+  font-size:12.5px; font-weight:500;
+  padding: 10px 16px;
+  border-radius: var(--r-pill);
+  box-shadow: var(--shadow-2);
+  display:flex; align-items:center; gap:8px;
+  z-index: 95;
+  opacity:0;
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+.toast.is-visible{
+  animation: toast-in var(--dur-med) var(--ease-out-soft) forwards, toast-out var(--dur-med) var(--ease) forwards 2.6s;
+}
+@keyframes toast-in{ to{ opacity:1; transform: translateX(-50%) translateY(0); } }
+@keyframes toast-out{ to{ opacity:0; transform: translateX(-50%) translateY(8px); } }
+.toast .icon{ width:14px; height:14px; color: var(--accent-cyan); }
+
+/* HUD de volume lateral: aparece ao mudar o volume quando nenhum painel de
+   volume está aberto (ex.: teclas de mídia, ou o backend empurrando novo
+   nível). Some sozinho após ~1,3s. */
+.volume-hud{
+  position:absolute;
+  right: 20px; top:50%;
+  transform: translateY(-50%) translateX(14px);
+  width: 54px;
+  padding: 15px 0 13px;
+  display:flex; flex-direction:column; align-items:center; gap:12px;
+  background: var(--glass-2);
+  border:1px solid var(--glass-border);
+  border-radius: var(--r-pill);
+  box-shadow: var(--shadow-3);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  backdrop-filter: blur(20px) saturate(150%);
+  z-index: 96;
+  opacity:0; pointer-events:none;
+}
+.volume-hud.is-visible{ animation: vhud-in var(--dur-med) var(--ease-out-soft) forwards; }
+.volume-hud[data-hiding]{ animation: vhud-out var(--dur-fast) var(--ease) forwards; }
+@keyframes vhud-in{  to{ opacity:1; transform: translateY(-50%) translateX(0); } }
+@keyframes vhud-out{ to{ opacity:0; transform: translateY(-50%) translateX(14px); } }
+.volume-hud .vhud-icon{ width:20px; height:20px; color: var(--text-1); }
+.volume-hud .vhud-icon svg{ width:100%; height:100%; }
+.volume-hud .vhud-track{
+  position:relative; width:6px; height:120px;
+  border-radius:3px; background: rgba(255,255,255,0.14); overflow:hidden;
+}
+.volume-hud .vhud-fill{
+  position:absolute; left:0; right:0; bottom:0; height:0%;
+  background: var(--accent-cyan); border-radius:3px;
+  transition: height var(--dur-fast) var(--ease), background var(--dur-med) var(--ease);
+}
+.volume-hud.is-muted .vhud-fill{ background: var(--text-3); }
+.volume-hud .vhud-pct{ font-size:11px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+
+[hidden]{ display:none !important; }
+
+/* ------------------------------------------------------------
+   11. RESPONSIVO
+   Base de projeto: 1366×768. Mantém-se utilizável em 1280×720 e 1920×1080.
+------------------------------------------------------------ */
+@media (max-width: 1300px){
+  .quick-search{ width:140px; }
+  .quick-search:focus-within{ width:180px; }
+}
+
+@media (min-width: 1700px){
+  :root{ --taskbar-h: 56px; }
+}
+
+@media (max-width: 900px){
+  .clock-cluster .clock-date{ display:none; }
+  .quick-search{ display:none; }
+}
+
+/* App local Configurações: janela própria no desktop, sem ocupar a barra de uso. */
+#deckSettings { inset:24px 24px 72px; width:auto; max-width:1100px; max-height:none; margin:auto;
+  display:flex; flex-direction:column; overflow:hidden; background:rgba(17,23,32,.98); }
+#deckSettings > header { flex-shrink:0; }
+#deckSettings > #deckSettingsSearch { width:100%; box-sizing:border-box; margin-top:18px; padding:12px 14px; flex-shrink:0; }
+#deckSettings .deck-settings-layout { display:grid; grid-template-columns:230px minmax(0,1fr); gap:24px; min-height:0; flex:1; }
+#deckSettings nav { overflow:auto; border-right:1px solid var(--hairline); padding-right:16px; }
+#deckSettings nav button { display:block; width:100%; text-align:left; padding:13px 12px; border:0; border-radius:10px; color:var(--text-2); background:transparent; cursor:pointer; margin-bottom:5px; }
+#deckSettings nav strong { display:block; font-size:12px; }
+#deckSettings nav small { display:block; font-size:10px; line-height:1.5; color:var(--text-3); margin-top:6px; }
+#deckSettings nav button[aria-current=page] { background:rgba(74,185,211,.12); color:var(--accent-cyan); }
+#deckSettings form { min-width:0; overflow:auto; padding-right:8px; }
+#deckSettings details { padding:18px 0; }
+#deckSettings details[hidden] { display:none; }
+#deckSettings .settings-action { padding:9px 12px; display:inline-flex; margin:5px 8px 5px 0; }
+#deckSettings button:disabled,#deckSettings input:disabled,#deckSettings select:disabled { opacity:.5; cursor:not-allowed; }
+#deckSettings footer { position:sticky; bottom:0; background:#111720; padding:12px 0; border-top:1px solid var(--hairline); }
+@media(max-width:720px) {
+  #deckSettings { inset:12px 10px 64px; padding:14px; }
+  #deckSettings .deck-settings-layout { grid-template-columns:1fr; gap:10px; }
+  #deckSettings nav { display:flex; overflow-x:auto; border:0; padding:0; flex-shrink:0; }
+  #deckSettings nav button { min-width:150px; margin-right:6px; }
+  #deckSettings nav small { display:none; }
+  #deckSettings .deck-settings-layout { grid-template-rows:auto minmax(0,1fr); }
+}
+
+/* ------------------------------------------------------------
+   12. MOVIMENTO REDUZIDO (acessibilidade)
+   O shell é cheio de animações (pop-in de painéis, entrada do launcher,
+   deslize de páginas, HUD de volume, flash). Quem pede "reduzir movimento"
+   no SO recebe as mesmas telas, praticamente sem animação. Padrão aditivo:
+   não muda nada para quem não ativou a preferência.
+------------------------------------------------------------ */
+@media (prefers-reduced-motion: reduce){
+  *, *::before, *::after{
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
