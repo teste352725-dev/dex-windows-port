@@ -214,16 +214,21 @@ class NativeAPI:
         return {"ok": False, "error": "Abrir Configurações do Android requer o agente (futuro)."}
 
     def host_controls(self, action="state", value=None):
-        # Sem host integrado/reparent no MVP do Windows.
-        return {"ok": True, "available": False}
+        return {"ok": True, "available": bool(getattr(self._c, "integrated", False))}
 
     def experimental_slot(self, geometry):
-        return {"ok": False, "error": "Host experimental indisponível no Windows."}
-
-    def experimental_surface(self, available):
+        # O palco é calculado no Python (área cliente menos a taskbar); o
+        # frontend não precisa informar o retângulo. Aceitamos por compatibilidade.
         return {"ok": True}
 
+    def experimental_surface(self, available):
+        if not getattr(self._c, "integrated", False):
+            return {"ok": True}
+        return self._wrap(lambda: self._c.set_surface_available(available))
+
     def surface_occlusions(self, rectangles):
+        # Modo 'windowed' (recorte por painel) não usado no MVP integrado do
+        # Windows — escondemos o palco inteiro via experimental_surface.
         return {"ok": True}
 
     def capture_desktop(self):

@@ -174,7 +174,7 @@ class FakeScrcpy:
         return [h for h in self.launched if h.app.package == package]
     def find_by_pid(self, pid):
         return next((h for h in self.launched if h.pid == int(pid)), None)
-    def launch(self, serial, app, config):
+    def launch(self, serial, app, config, integrated=False):
         h = FakeHandle(self._next_pid, app, f"{app.name} — DEX")
         self._next_pid += 1
         self.launched.append(h)
@@ -241,6 +241,108 @@ class ControllerFlow(unittest.TestCase):
         c.poll()
         with self.assertRaises(RuntimeError):
             c.open_app("com.a.fotos")
+
+
+class FakeWindowManager:
+    """Gerência de janelas falsa para exercitar o modo integrado sem Win32."""
+    def __init__(self):
+        self.embedded = set()
+        self.visible = {}      # hwnd -> bool
+        self.bounds = {}       # hwnd -> (x, y, w, h)
+        self._next_hwnd = 5000
+        self.shell = 9999
+        self.focused = None
+    def wait_for_window(self, pid=None, title=None, timeout=0, interval=0):
+        self._next_hwnd += 1
+        return type("W", (), {"hwnd": self._next_hwnd})()
+    def find_by_pid(self, pid):
+        return None
+    def find_by_title(self, title):
+        return None
+    def find_own_main_window(self):
+        return self.shell
+    def client_box(self, hwnd):
+        return 1366, 768, 1.0
+    def embed(self, child, parent):
+        self.embedded.add(child); self.visible[child] = True; return True
+    def unembed(self, child):
+        self.embedded.discard(child); self.visible.pop(child, None); return True
+    def set_child_bounds(self, child, x, y, w, h):
+        self.bounds[child] = (x, y, w, h); return True
+    def show_window(self, hwnd, visible):
+        self.visible[hwnd] = visible; return True
+    def focus(self, hwnd):
+        self.focused = hwnd
+    def minimize(self, hwnd):
+        self.visible[hwnd] = False
+    def close(self, hwnd):
+        self.visible.pop(hwnd, None)
+    def is_minimized(self, hwnd):
+        return False
+
+
+class IntegratedFlow(unittest.TestCase):
+    def _controller(self):
+        dev = adb.DeviceRecord(serial="SER1", state="device", model="FakePhone")
+        catalog = apps.parse_scrcpy_apps(" - Fotos   com.a.fotos\n - Banco   com.b.banco\n")
+        cfg = dict(config.DEFAULT_CONFIG)
+        c = Controller(FakeAdb([dev]), FakeScrcpy(catalog),
+                       window_manager=FakeWindowManager(), config=cfg, integrated=True)
+        c.poll()
+        return c
+
+    def test_open_embeds_and_sizes_to_stage(self):
+        c = self._controller()
+        c.open_app("com.a.fotos")
+        wm = c.wm
+        self.assertEqual(len(wm.embedded), 1)
+        hwnd = next(iter(wm.embedded))
+        # palco = cliente (1366x768) menos a taskbar (52px) -> altura 716
+        self.assertEqual(wm.bounds[hwnd], (0, 0, 1366, 716))
+        self.assertTrue(wm.visible[hwnd])
+
+    def test_one_app_visible_at_a_time(self):
+        c = self._controller()
+        c.open_app("com.a.fotos")
+        c.open_app("com.b.banco")
+        wm = c.wm
+        self.assertEqual(len(wm.embedded), 2)
+        visiveis = [h for h, v in wm.visible.items() if v]
+        self.assertEqual(len(visiveis), 1)   # só o ativo aparece
+
+    def test_panel_open_hides_stage(self):
+        c = self._controller()
+        c.open_app("com.a.fotos")
+        active = c._active_hwnd
+        c.set_surface_available(False)       # painel HTML abriu
+        self.assertFalse(c.wm.visible[active])
+        c.set_surface_available(True)        # painel fechou
+        self.assertTrue(c.wm.visible[active])
+
+    def test_minimize_returns_screen_to_shell(self):
+        c = self._controller()
+        c.open_app("com.a.fotos")
+        active = c._active_hwnd
+        c.minimize_session(c._active_pid)
+        self.assertFalse(c.wm.visible[active])
+        snap = c.snapshot()
+        self.assertIsNone(snap["experimentalSurface"])  # desktop volta a aparecer
+
+    def test_snapshot_surface_active_when_app_on_stage(self):
+        c = self._controller()
+        c.open_app("com.a.fotos")
+        snap = c.snapshot()
+        self.assertEqual(snap["experimentalSurface"], {"windowed": False})
+        self.assertEqual(snap["activeApp"], "com.a.fotos")
+
+    def test_close_active_promotes_other(self):
+        c = self._controller()
+        c.open_app("com.a.fotos")
+        first_pid = c._active_pid
+        c.open_app("com.b.banco")
+        c.close_session(c._active_pid)       # fecha o Banco (ativo)
+        # o Fotos volta ao palco
+        self.assertEqual(c.snapshot()["activeApp"], "com.a.fotos")
 
 
 if __name__ == "__main__":

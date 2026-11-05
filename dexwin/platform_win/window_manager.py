@@ -50,6 +50,8 @@ class WindowManager:
 
     def __init__(self) -> None:
         self.win32gui, self.win32con, self.win32process = _win32()
+        # hwnd -> (style, exstyle, parent) salvos ao embutir, para desfazer.
+        self._embedded_state: dict[int, tuple[int, int, int]] = {}
 
     # ---- consulta -------------------------------------------------------
     def list_windows(self) -> list[WinWindow]:
@@ -191,6 +193,121 @@ class WindowManager:
             return False
         self.move_resize(hwnd, *geo)
         return True
+
+    # ---- modo integrado (embutir a janela do app dentro do shell) -------
+    def embed(self, child_hwnd: int, parent_hwnd: int) -> bool:
+        """Reparenta a janela do app para DENTRO do shell: vira filha sem borda.
+
+        Guarda estilo/estilo-estendido/pai originais para poder desfazer
+        (``unembed``). Depois disso, as coordenadas da janela passam a ser
+        relativas à área cliente do shell.
+        """
+        g, con = self.win32gui, self.win32con
+        try:
+            style = g.GetWindowLong(child_hwnd, con.GWL_STYLE)
+            exstyle = g.GetWindowLong(child_hwnd, con.GWL_EXSTYLE)
+            try:
+                original_parent = g.GetParent(child_hwnd)
+            except Exception:
+                original_parent = 0
+            self._embedded_state[child_hwnd] = (style, exstyle, original_parent or 0)
+            strip = (con.WS_CAPTION | con.WS_THICKFRAME | con.WS_MINIMIZEBOX
+                     | con.WS_MAXIMIZEBOX | con.WS_SYSMENU | con.WS_POPUP)
+            new_style = (style & ~strip) | con.WS_CHILD
+            g.SetWindowLong(child_hwnd, con.GWL_STYLE, new_style)
+            new_ex = exstyle & ~getattr(con, "WS_EX_APPWINDOW", 0x00040000)
+            g.SetWindowLong(child_hwnd, con.GWL_EXSTYLE, new_ex)
+            g.SetParent(child_hwnd, parent_hwnd)
+            g.SetWindowPos(child_hwnd, con.HWND_TOP, 0, 0, 0, 0,
+                           con.SWP_NOMOVE | con.SWP_NOSIZE
+                           | con.SWP_FRAMECHANGED | con.SWP_SHOWWINDOW)
+            return True
+        except Exception:
+            self._embedded_state.pop(child_hwnd, None)
+            return False
+
+    def unembed(self, child_hwnd: int) -> bool:
+        """Desfaz o ``embed``: volta a ser janela de topo com borda."""
+        g, con = self.win32gui, self.win32con
+        state = self._embedded_state.pop(child_hwnd, None)
+        if not state:
+            return False
+        style, exstyle, original_parent = state
+        try:
+            g.SetParent(child_hwnd, original_parent or 0)
+            g.SetWindowLong(child_hwnd, con.GWL_STYLE, style)
+            g.SetWindowLong(child_hwnd, con.GWL_EXSTYLE, exstyle)
+            g.SetWindowPos(child_hwnd, con.HWND_TOP, 80, 80, 960, 600,
+                           con.SWP_FRAMECHANGED | con.SWP_SHOWWINDOW)
+            return True
+        except Exception:
+            return False
+
+    def is_embedded(self, child_hwnd: int) -> bool:
+        return child_hwnd in self._embedded_state
+
+    def set_child_bounds(self, child_hwnd: int, x: int, y: int,
+                         width: int, height: int) -> bool:
+        try:
+            self.win32gui.MoveWindow(child_hwnd, int(x), int(y),
+                                     max(1, int(width)), max(1, int(height)), True)
+            return True
+        except Exception:
+            return False
+
+    def show_window(self, hwnd: int, visible: bool) -> bool:
+        g, con = self.win32gui, self.win32con
+        try:
+            g.ShowWindow(hwnd, con.SW_SHOWNA if visible else con.SW_HIDE)
+            return True
+        except Exception:
+            return False
+
+    def dpi_scale(self, hwnd: int) -> float:
+        """Fator de escala de DPI da janela (1.0 = 100%, 1.5 = 150%)."""
+        try:
+            import ctypes
+            dpi = ctypes.windll.user32.GetDpiForWindow(hwnd)
+            if dpi:
+                return dpi / 96.0
+        except Exception:
+            pass
+        return 1.0
+
+    def client_box(self, hwnd: int) -> tuple[int, int, float]:
+        """(largura, altura em px físicos, escala_dpi) da área cliente do hwnd."""
+        left, top, right, bottom = self.win32gui.GetClientRect(hwnd)
+        return right - left, bottom - top, self.dpi_scale(hwnd)
+
+    def find_own_main_window(self) -> int | None:
+        """Janela de topo visível do NOSSO processo (o shell): a de maior área."""
+        import os
+        g, proc = self.win32gui, self.win32process
+        mypid = os.getpid()
+        best = None
+        best_area = -1
+
+        def callback(hwnd, _):
+            nonlocal best, best_area
+            if not g.IsWindowVisible(hwnd):
+                return
+            try:
+                _tid, pid = proc.GetWindowThreadProcessId(hwnd)
+            except Exception:
+                return
+            if pid != mypid:
+                return
+            try:
+                left, top, right, bottom = g.GetWindowRect(hwnd)
+            except Exception:
+                return
+            area = (right - left) * (bottom - top)
+            if area > best_area:
+                best_area = area
+                best = hwnd
+
+        g.EnumWindows(callback, None)
+        return best
 
 
 def win32con_MONITOR_DEFAULTTOPRIMARY() -> int:

@@ -14,4 +14,4 @@ Partes 100% reaproveitadas: o frontend (HTML/CSS/JS) e a lógica de montar o
 comando do scrcpy (o "pulo do gato" do projeto).
 """
 
-__version__ = "0.1.0-win"
+__version__ = "0.2.0-win"

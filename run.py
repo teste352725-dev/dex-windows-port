@@ -23,7 +23,7 @@ from dexwin.host.controller import Controller
 from dexwin.host import webhost
 
 
-def build_controller():
+def build_controller(integrated=False):
     missing = tools.missing_tools()
     scrcpy_path = tools.find_scrcpy()
     adb_path = tools.find_adb()
@@ -40,7 +40,10 @@ def build_controller():
             print(f"[aviso] gerência de janelas Win32 indisponível: {exc}")
 
     config = load_config()
-    controller = Controller(adb, scrcpy_manager, window_manager, config)
+    # Modo integrado: via --integrated OU "integrated": true no config.json.
+    integrated = integrated or bool(config.get("integrated"))
+    controller = Controller(adb, scrcpy_manager, window_manager, config,
+                            integrated=integrated)
     return controller, missing
 
 
@@ -48,9 +51,13 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description="DEX para Windows")
     parser.add_argument("--debug", action="store_true", help="DevTools do WebView2")
     parser.add_argument("--fullscreen", action="store_true")
+    parser.add_argument("--integrated", action="store_true",
+                        help="Embute os apps dentro do shell (como no Linux)")
     args = parser.parse_args(argv)
 
-    controller, missing = build_controller()
+    controller, missing = build_controller(integrated=args.integrated)
+    if controller.integrated:
+        print("[info] modo integrado ligado: um app por vez embutido no shell.")
     if missing:
         print("[aviso] binários ausentes: " + ", ".join(missing) +
               " — coloque scrcpy.exe/adb.exe em tools/ (ver README).")

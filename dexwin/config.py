@@ -41,6 +41,7 @@ DEFAULT_CONFIG: dict = {
     "wallpaper_color": "#10243b",
     "wallpaper_path": "",
     "wallpaper_fit": "fill",
+    "integrated": False,      # True = apps embutidos no shell (como no Linux)
 }
 
 
@@ -76,7 +77,8 @@ def _coerce(values: dict) -> dict:
             cfg[key] = values[key]
     if values.get("gamepad") in VALID_GAMEPAD_MODES:
         cfg["gamepad"] = values["gamepad"]
-    for key in ("audio", "hide_ime", "turn_screen_off", "preserve_on_close"):
+    for key in ("audio", "hide_ime", "turn_screen_off", "preserve_on_close",
+                "integrated"):
         if isinstance(values.get(key), bool):
             cfg[key] = values[key]
     for key in ("desktop_apps", "favorites", "recent"):

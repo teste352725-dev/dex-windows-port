@@ -48,6 +48,7 @@ def build_launch_command(
     app: AppInfo,
     config: dict,
     supports_flex_display: bool = False,
+    integrated: bool = False,
 ) -> tuple[list[str], str]:
     """Monta argv (sem shell) para abrir ``app`` numa janela virtual própria."""
     profile = app_display_profile(app.package, config)
@@ -73,6 +74,10 @@ def build_launch_command(
         "--stay-awake",
         "--verbosity=warn",
     ]
+    if integrated:
+        # Sem borda já na origem: o Win32 ainda tira o resto ao embutir, mas
+        # assim não há barra de título piscando antes.
+        command.append("--window-borderless")
     if force_fullscreen:
         command.append("--fullscreen")
     elif supports_flex_display:
@@ -136,9 +141,11 @@ class ScrcpyManager:
         )
         return parse_scrcpy_apps(out.stdout + "\n" + out.stderr)
 
-    def launch(self, serial: str, app: AppInfo, config: dict) -> LaunchHandle:
+    def launch(self, serial: str, app: AppInfo, config: dict,
+               integrated: bool = False) -> LaunchHandle:
         command, title = build_launch_command(
-            self.scrcpy_path, serial, app, config, self.supports_flex_display)
+            self.scrcpy_path, serial, app, config, self.supports_flex_display,
+            integrated=integrated)
         return self._spawn(command, app, title)
 
     def mirror(self, serial: str, config: dict) -> LaunchHandle:

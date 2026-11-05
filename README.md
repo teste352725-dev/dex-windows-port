@@ -103,16 +103,30 @@ python -m unittest discover -s tests -p "test_*.py"
 Cobrem parsers do adb, catálogo, builders do scrcpy, geometria de snap, config e
 o fluxo do Controller (com dummies). **22 testes, sem precisar de hardware.**
 
-## O que já está pronto (v0.1)
+## O que já está pronto (v0.2)
 
 - Detecção de dispositivo, nome e bateria via adb.
 - Catálogo de apps (`scrcpy --list-apps`).
 - Abrir app em janela virtual (`--new-display`), espelhar tela, focar, minimizar,
   fechar, e **snap** (metades/cantos) via Win32.
+- **Modo integrado** (`--integrated`): o app fica EMBUTIDO dentro do shell (como no
+  Linux), via `SetParent` do Win32. Um app visível por vez, ocupando o "palco"
+  (área toda menos a taskbar); alterna pela taskbar; ao abrir um painel (launcher,
+  configurações…) o palco some e o shell aparece. Sem a flag, as janelas ficam
+  flutuando soltas (modo clássico, mais rápido e à prova de falhas).
 - Perfis de display por app (Discord já embutido; dá para adicionar outros).
 - Favoritos, atalhos na área de trabalho, recentes, wallpaper (seletor nativo).
 - Captura de tela do Windows (Pillow).
 - Config persistida em `%APPDATA%\dex-windows\config.json`.
+
+### Ligar o modo integrado
+
+```powershell
+py run.py --integrated
+```
+
+Ou, para deixar ligado por padrão, coloque `"integrated": true` no
+`%APPDATA%\dex-windows\config.json`.
 
 ## O que falta testar no Windows (próximo passo, com você)
 
@@ -130,5 +144,6 @@ o fluxo do Controller (com dummies). **22 testes, sem precisar de hardware.**
   notificações): dependiam de um *agente companion* no Android. No MVP aparecem
   como "indisponível". Portar o agente é uma fase à parte.
 - **Ícones reais dos apps**: por ora usa o glifo colorido de fallback do shell.
-- **Modo integrado/reparent** (janela Android embutida dentro do shell): fica como
-  evolução; o SetParent está esboçado mas desligado.
+- **Modo integrado — recorte por painel**: hoje, ao abrir um painel HTML, o palco
+  inteiro some (simples e robusto). O recorte fino (painel sobre o app, estilo
+  XShape do Linux) via `SetWindowRgn` fica como evolução.
