@@ -114,16 +114,42 @@ class WindowManager:
                        con.SWP_NOZORDER | con.SWP_SHOWWINDOW)
 
     def focus(self, hwnd: int) -> None:
-        g, con, _ = self.win32gui, self.win32con, self.win32process
-        placement = g.GetWindowPlacement(hwnd)
-        if placement[1] == con.SW_SHOWMINIMIZED:
+        """Traz a janela para frente de forma robusta.
+
+        SetForegroundWindow sozinho costuma falhar quando quem chama não é o
+        processo em primeiro plano (caso típico aqui: o scrcpy roda em outro
+        processo). O truque padrão do Win32 é anexar a fila de input da nossa
+        thread à da janela em foco (AttachThreadInput) durante a troca.
+        """
+        g, con, proc = self.win32gui, self.win32con, self.win32process
+        import win32api  # local: só no Windows
+
+        if g.GetWindowPlacement(hwnd)[1] == con.SW_SHOWMINIMIZED:
             g.ShowWindow(hwnd, con.SW_RESTORE)
+        else:
+            g.ShowWindow(hwnd, con.SW_SHOW)
+
+        foreground = g.GetForegroundWindow()
+        this_thread = win32api.GetCurrentThreadId()
+        fg_thread = proc.GetWindowThreadProcessId(foreground)[0] if foreground else this_thread
+        attached = False
         try:
+            if fg_thread and fg_thread != this_thread:
+                proc.AttachThreadInput(this_thread, fg_thread, True)
+                attached = True
+            g.BringWindowToTop(hwnd)
             g.SetForegroundWindow(hwnd)
         except Exception:
-            # Windows às vezes nega foco a processo em background; fallback.
-            g.ShowWindow(hwnd, con.SW_SHOW)
-            g.BringWindowToTop(hwnd)
+            try:
+                g.BringWindowToTop(hwnd)
+            except Exception:
+                pass
+        finally:
+            if attached:
+                try:
+                    proc.AttachThreadInput(this_thread, fg_thread, False)
+                except Exception:
+                    pass
 
     def minimize(self, hwnd: int) -> None:
         g, con, _ = self.win32gui, self.win32con, self.win32process
